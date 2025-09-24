@@ -1,0 +1,68 @@
+name: Auto Build & Release iOS IPA
+
+on:
+  push:
+    branches:
+      - main # Adjust this if your default branch is different
+
+jobs:
+  sync-fork:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout upstream
+        uses: actions/checkout@v4
+        with:
+          repository: yaerda/dart_simple_live
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror changes to fork
+        env:
+          FORK_TOKEN: ${{ secrets.FORK_TOKEN }} # Personal access token for your fork
+        run: |
+          git remote add fork https://yaerda:${FORK_TOKEN}@github.com/yaerda/dart_simple_live.git
+          git push fork main --force
+
+  build-release:
+    needs: sync-fork
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Add steps for iOS code signing here, e.g.:
+      # - name: Setup code signing
+      #   run: |
+      #     echo ${{ secrets.APPLE_CERT }} | base64 --decode > certificate.p12
+      #     # Setup keychain, import certificate, etc.
+
+      - name: Build IPA
+        run: flutter build ipa --release
+
+      - name: Generate changelog
+        run: |
+          # Example using git-cliff
+          git cliff --output CHANGELOG.md
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.sha }}
+          name: "Release ${{ github.sha }}"
+          body_path: CHANGELOG.md
+
+      - name: Upload IPA
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ios/ipa/*.ipa
+          tag_name: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
