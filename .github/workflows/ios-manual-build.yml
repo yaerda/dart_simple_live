@@ -1,0 +1,129 @@
+name: Manual iOS IPA Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - 'release'
+          - 'debug'
+      create_release:
+        description: 'Create GitHub release'
+        required: true
+        default: true
+        type: boolean
+      version_override:
+        description: 'Override version (leave empty to use app version)'
+        required: false
+        type: string
+
+jobs:
+  build-ios-manual:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd simple_live_app
+          flutter pub get
+
+      - name: Build iOS (${{ github.event.inputs.build_type }})
+        run: |
+          cd simple_live_app
+          if [ "${{ github.event.inputs.build_type }}" = "debug" ]; then
+            flutter build ios --debug --no-codesign
+          else
+            flutter build ios --release --no-codesign
+          fi
+
+      - name: Create IPA
+        run: |
+          cd simple_live_app
+          BUILD_TYPE="${{ github.event.inputs.build_type }}"
+          if [ "$BUILD_TYPE" = "debug" ]; then
+            BUILD_DIR="iphonesimulator"
+          else
+            BUILD_DIR="iphoneos"
+          fi
+          
+          mkdir -p build/ios/$BUILD_DIR/Payload
+          cp -R build/ios/$BUILD_DIR/Runner.app build/ios/$BUILD_DIR/Payload/Runner.app
+          cd build/ios/$BUILD_DIR/
+          zip -q -r "ios_${BUILD_TYPE}.ipa" Payload
+          cd ../../..
+
+      - name: Upload IPA to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa-${{ github.event.inputs.build_type }}
+          path: |
+            simple_live_app/build/ios/*/ios_*.ipa
+
+      - name: Read version info
+        if: github.event.inputs.create_release == 'true'
+        id: version
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: assets/app_version.json
+
+      - name: Set version
+        if: github.event.inputs.create_release == 'true'
+        id: set_version
+        run: |
+          if [ -n "${{ github.event.inputs.version_override }}" ]; then
+            echo "version=${{ github.event.inputs.version_override }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ fromJson(steps.version.outputs.content).version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate build info
+        if: github.event.inputs.create_release == 'true'
+        run: |
+          echo "## iOS IPA Build Information" > BUILD_INFO.md
+          echo "" >> BUILD_INFO.md
+          echo "- **Build Type**: ${{ github.event.inputs.build_type }}" >> BUILD_INFO.md
+          echo "- **Build Date**: $(date)" >> BUILD_INFO.md
+          echo "- **Flutter Version**: 3.22.x" >> BUILD_INFO.md
+          echo "- **Code Signed**: No (unsigned build)" >> BUILD_INFO.md
+          echo "" >> BUILD_INFO.md
+          echo "### Installation Instructions" >> BUILD_INFO.md
+          echo "1. Download the IPA file" >> BUILD_INFO.md
+          echo "2. Install using Xcode, 3uTools, or similar tool" >> BUILD_INFO.md
+          echo "3. Trust the developer certificate in iOS Settings" >> BUILD_INFO.md
+          echo "" >> BUILD_INFO.md
+          if [ -f assets/app_version.json ]; then
+            echo "${{ fromJson(steps.version.outputs.content).version_desc }}" >> BUILD_INFO.md
+          fi
+
+      - name: Create Release
+        if: github.event.inputs.create_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "iOS IPA ${{ steps.set_version.outputs.version }} (${{ github.event.inputs.build_type }})"
+          body_path: BUILD_INFO.md
+          prerelease: true
+          tag_name: "ios-${{ steps.set_version.outputs.version }}-${{ github.event.inputs.build_type }}-${{ github.run_number }}"
+          files: |
+            simple_live_app/build/ios/*/ios_*.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Job completed
+        run: |
+          echo "🍎 iOS IPA build completed!"
+          echo "Build type: ${{ github.event.inputs.build_type }}"
+          echo "Create release: ${{ github.event.inputs.create_release }}"
