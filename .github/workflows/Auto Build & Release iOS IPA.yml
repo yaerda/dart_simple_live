@@ -2,8 +2,8 @@ name: Auto Build & Release iOS IPA
 
 on:
   push:
-    branches:
-      - main # Adjust this if your default branch is different
+    tags:
+      - "v*"
 
 jobs:
   sync-fork:
