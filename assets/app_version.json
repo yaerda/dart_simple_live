@@ -1,0 +1,7 @@
+{
+    "version": "1.9.4",
+    "version_num": 10904,
+    "version_desc": "- 基础版本发布\n- iOS IPA构建支持",
+    "prerelease": false,
+    "download_url": "https://github.com/yaerda/dart_simple_live/releases"
+}
