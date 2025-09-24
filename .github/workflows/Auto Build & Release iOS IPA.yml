@@ -6,24 +6,24 @@ on:
       - "v*"
 
 jobs:
-  sync-fork:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout upstream
-        uses: actions/checkout@v4
-        with:
-          repository: yaerda/dart_simple_live
-          token: ${{ secrets.GITHUB_TOKEN }}
+  # sync-fork:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout upstream
+  #       uses: actions/checkout@v4
+  #       with:
+  #         repository: yaerda/dart_simple_live
+  #         token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mirror changes to fork
-        env:
-          FORK_TOKEN: ${{ secrets.FORK_TOKEN }} # Personal access token for your fork
-        run: |
-          git remote add fork https://yaerda:${FORK_TOKEN}@github.com/yaerda/dart_simple_live.git
-          git push fork main --force
+  #     - name: Mirror changes to fork
+  #       env:
+  #         FORK_TOKEN: ${{ secrets.FORK_TOKEN }} # Personal access token for your fork
+  #       run: |
+  #         git remote add fork https://yaerda:${FORK_TOKEN}@github.com/yaerda/dart_simple_live.git
+  #         git push fork main --force
 
   build-release:
-    needs: sync-fork
+    # needs: sync-fork
     runs-on: macos-latest
     steps:
       - name: Checkout code
