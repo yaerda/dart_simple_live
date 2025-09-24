@@ -3,3 +3,17 @@ simple_live_tv_app/.vscode/settings.json
 
 # macOS Spotlight Search index file
 *.DS_Store
+
+# iOS Build artifacts
+*.ipa
+simple_live_app/build/ios/iphoneos/Payload/
+simple_live_app/build/ios/iphoneos/*.ipa
+simple_live_app/build/ios/iphonesimulator/*.ipa
+
+# Xcode build artifacts
+*.xcarchive
+*.dSYM
+
+# Temporary files
+CHANGELOG.md
+BUILD_INFO.md

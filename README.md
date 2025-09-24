@@ -64,6 +64,15 @@ Flutter : `3.22`
 
 [5ime/Tiktok_Signature](https://github.com/5ime/Tiktok_Signature)
 
+## iOS IPA 构建
+
+本仓库提供了自动化的 iOS IPA 构建 GitHub Actions：
+
+- **Auto Build & Release iOS IPA**: 推送 tag 时自动构建并发布 IPA
+- **Manual iOS IPA Build**: 手动触发构建，支持 Debug/Release 模式
+
+详细说明请参考: [iOS_BUILD_ACTIONS.md](docs/iOS_BUILD_ACTIONS.md)
+
 ## 声明
 
 本项目的所有功能都是基于互联网上公开的资料开发，无任何破解、逆向工程等行为。
