@@ -1,5 +1,5 @@
 {
-  "version": "v1.0.1",
+  "version": "v1.0.2",
   "version_desc": "Initial release version, includes Android/iOS/macOS/Windows/Linux builds.",
   "prerelease": false
 }
