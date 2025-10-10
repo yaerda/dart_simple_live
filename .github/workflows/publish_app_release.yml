@@ -42,22 +42,6 @@ jobs:
         with:
           flutter-version: '3.22.x'
           cache: true 
-          
-      # Ensure correct Android SDK
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 34
-          build-tools: 34.0.0
-
-      # # Clean Flutter & Gradle cache
-      # - name: Flutter clean
-      #   run: |
-      #     cd simple_live_app
-      #     flutter clean
-      # - name: Clear Gradle Cache
-      #   run: cd simple_live_app/android && ./gradlew cleanBuildCache || true
-
 
       # 打开MAC Desktop支持
       - name: Enable Flutter Desktop
