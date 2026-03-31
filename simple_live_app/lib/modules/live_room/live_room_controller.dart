@@ -77,7 +77,6 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   /// 当前线路
   var currentLineIndex = -1;
   var currentLineInfo = "".obs;
-
   /// 退出倒计时
   var countdown = 60.obs;
 
@@ -106,6 +105,8 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   // 开播时长状态变量
   var liveDuration = "00:00:00".obs;
   Timer? _liveDurationTimer;
+  DateTime? _lastPlayingAt;
+  bool _isPlayingNow = false;
 
   @override
   void onInit() {
@@ -121,6 +122,17 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     scrollController.addListener(scrollListener);
 
     super.onInit();
+  }
+
+  @override
+  void initStream() {
+    super.initStream();
+    player.stream.playing.listen((event) {
+      _isPlayingNow = event;
+      if (event) {
+        _lastPlayingAt = DateTime.now();
+      }
+    });
   }
 
   void scrollListener() {
@@ -459,7 +471,9 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   Future<void> initPlaylist() async {
     currentLineInfo.value = "线路${currentLineIndex + 1}";
     errorMsg.value = "";
-    if (playUrls.isEmpty || currentLineIndex < 0 || currentLineIndex >= playUrls.length) {
+    if (playUrls.isEmpty ||
+        currentLineIndex < 0 ||
+        currentLineIndex >= playUrls.length) {
       return;
     }
     var finalUrl = playUrls[currentLineIndex];
@@ -469,6 +483,8 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
 
     // 初始化播放器并设置 ao 参数
     await initializePlayer();
+    _lastPlayingAt = null;
+    _isPlayingNow = false;
 
     await player.open(Media(finalUrl, httpHeaders: playHeaders));
   }
@@ -492,6 +508,19 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
 
   @override
   void mediaEnd() async {
+    if (site.id == Constant.kHuya && Platform.isIOS) {
+      final lastPlayingAt = _lastPlayingAt;
+      if (lastPlayingAt != null) {
+        final elapsed = DateTime.now().difference(lastPlayingAt);
+        if (elapsed < const Duration(seconds: 12)) {
+          await Future.delayed(const Duration(seconds: 2));
+          if (_isPlayingNow) {
+            Log.d("iOS Huya播放结束，但2秒内已自动恢复，忽略自动刷新");
+            return;
+          }
+        }
+      }
+    }
     super.mediaEnd();
     if (mediaErrorRetryCount < 2) {
       Log.d("播放结束，尝试第${mediaErrorRetryCount + 1}次刷新");
