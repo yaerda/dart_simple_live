@@ -129,6 +129,7 @@ jobs:
 
       #上传至Release
       - name: Upload Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           name: "${{ fromJson(steps.version.outputs.content).version }}"
@@ -204,6 +205,7 @@ jobs:
 
       #上传至Release
       - name: Upload Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           name: "${{ fromJson(steps.version.outputs.content).version }}"
@@ -269,6 +271,7 @@ jobs:
 
       #上传至Release
       - name: Upload Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           name: "${{ fromJson(steps.version.outputs.content).version }}"
