@@ -409,36 +409,85 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
     initPlaylist();
   }
 
+  Future<bool> refreshCurrentPlayUrls({bool preserveLine = true}) async {
+    if (detail.value == null || currentQuality < 0 || qualites.isEmpty) {
+      return false;
+    }
+    try {
+      var targetLineIndex =
+          preserveLine && currentLineIndex >= 0 ? currentLineIndex : 0;
+      var playUrl = await site.liveSite
+          .getPlayUrls(detail: detail.value!, quality: qualites[currentQuality]);
+      if (playUrl.urls.isEmpty) {
+        return false;
+      }
+      playUrls.value = playUrl.urls;
+      playHeaders = playUrl.headers;
+      if (playUrls.isEmpty) {
+        currentLineIndex = -1;
+        currentLineInfo.value = "";
+        return false;
+      }
+      currentLineIndex =
+          (targetLineIndex.clamp(0, playUrls.length - 1) as num).toInt();
+      currentLineInfo.value = "线路${currentLineIndex + 1}";
+      return true;
+    } catch (e) {
+      Log.logPrint(e);
+      return false;
+    }
+  }
+
   void changePlayLine(int index) {
     currentLineIndex = index;
     //重置错误次数
     mediaErrorRetryCount = 0;
+    if (site.id == Constant.kHuya) {
+      refreshHuyaStreamAndPlay().then((success) {
+        if (!success) {
+          setPlayer();
+        }
+      }).catchError((e) {
+        Log.logPrint(e);
+        setPlayer();
+      });
+      return;
+    }
     setPlayer();
   }
 
-  void initPlaylist() async {
+  Future<void> initPlaylist() async {
     currentLineInfo.value = "线路${currentLineIndex + 1}";
     errorMsg.value = "";
-
-    final mediaList = playUrls.map((url) {
-      var finalUrl = url;
-      if (AppSettingsController.instance.playerForceHttps.value) {
-        finalUrl = finalUrl.replaceAll("http://", "https://");
-      }
-      return Media(finalUrl, httpHeaders: playHeaders);
-    }).toList();
+    if (playUrls.isEmpty || currentLineIndex < 0 || currentLineIndex >= playUrls.length) {
+      return;
+    }
+    var finalUrl = playUrls[currentLineIndex];
+    if (AppSettingsController.instance.playerForceHttps.value) {
+      finalUrl = finalUrl.replaceAll("http://", "https://");
+    }
 
     // 初始化播放器并设置 ao 参数
     await initializePlayer();
 
-    await player.open(Playlist(mediaList));
+    await player.open(Media(finalUrl, httpHeaders: playHeaders));
   }
 
   void setPlayer() async {
-    currentLineInfo.value = "线路${currentLineIndex + 1}";
-    errorMsg.value = "";
+    await initPlaylist();
+  }
 
-    await player.jump(currentLineIndex);
+  Future<bool> refreshHuyaStreamAndPlay({bool preserveLine = true}) async {
+    if (site.id != Constant.kHuya) {
+      setPlayer();
+      return true;
+    }
+    var refreshed = await refreshCurrentPlayUrls(preserveLine: preserveLine);
+    if (!refreshed) {
+      return false;
+    }
+    await initPlaylist();
+    return true;
   }
 
   @override
@@ -452,7 +501,9 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
       }
       mediaErrorRetryCount += 1;
       //刷新一次
-      setPlayer();
+      if (!await refreshHuyaStreamAndPlay()) {
+        setPlayer();
+      }
       return;
     }
 
@@ -470,7 +521,7 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
   int mediaErrorRetryCount = 0;
   @override
   void mediaError(String error) async {
-    super.mediaEnd();
+    super.mediaError(error);
     if (mediaErrorRetryCount < 2) {
       Log.d("播放失败，尝试第${mediaErrorRetryCount + 1}次刷新");
       if (mediaErrorRetryCount == 1) {
@@ -479,7 +530,9 @@ class LiveRoomController extends PlayerController with WidgetsBindingObserver {
       }
       mediaErrorRetryCount += 1;
       //刷新一次
-      setPlayer();
+      if (!await refreshHuyaStreamAndPlay()) {
+        setPlayer();
+      }
       return;
     }
 

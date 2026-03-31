@@ -286,6 +286,19 @@ class HuyaSite implements LiveSite {
         ));
       }
     }
+    var prioritizedLines = <HuyaLineModel>[];
+    var fallbackLines = <HuyaLineModel>[];
+    for (var line in huyaLines) {
+      if (line.line.contains("al.flv.")) {
+        fallbackLines.add(line);
+      } else {
+        prioritizedLines.add(line);
+      }
+    }
+    huyaLines
+      ..clear()
+      ..addAll(prioritizedLines)
+      ..addAll(fallbackLines);
 
     //清晰度
     var biterates = tLiveInfo["tLiveStreamInfo"]["vBitRateInfo"]["value"];
