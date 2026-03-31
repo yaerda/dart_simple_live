@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:simple_live_core/simple_live_core.dart';
@@ -216,8 +217,12 @@ class HuyaSite implements LiveSite {
     req.streamName = line.streamName;
     var resp =
         await tupClient.tupRequest("getCdnTokenInfo", req, GetCdnTokenResp());
-    var url =
-        '${line.line}/${resp.streamName}.flv?${resp.flvAntiCode}&codec=264';
+    final preferHls = Platform.isIOS &&
+        line.hlsLine.isNotEmpty &&
+        line.hlsAntiCode.isNotEmpty;
+    var url = preferHls
+        ? '${line.hlsLine}/${resp.streamName}.m3u8?${resp.hlsAntiCode}'
+        : '${line.line}/${resp.streamName}.flv?${resp.flvAntiCode}&codec=264';
     if (bitRate > 0) {
       url += "&ratio=$bitRate";
     }
@@ -278,6 +283,7 @@ class HuyaSite implements LiveSite {
       if ((item["sFlvUrl"]?.toString() ?? "").isNotEmpty) {
         huyaLines.add(HuyaLineModel(
           line: item["sFlvUrl"].toString(),
+          hlsLine: item["sHlsUrl"]?.toString() ?? "",
           lineType: HuyaLineType.flv,
           flvAntiCode: item["sFlvAntiCode"].toString(),
           hlsAntiCode: item["sHlsAntiCode"].toString(),
@@ -619,6 +625,7 @@ enum HuyaLineType {
 
 class HuyaLineModel {
   final String line;
+  final String hlsLine;
   final String cdnType;
   final String flvAntiCode;
   final String hlsAntiCode;
@@ -628,6 +635,7 @@ class HuyaLineModel {
 
   HuyaLineModel({
     required this.line,
+    required this.hlsLine,
     required this.lineType,
     required this.flvAntiCode,
     required this.hlsAntiCode,
@@ -640,6 +648,7 @@ class HuyaLineModel {
   String toString() {
     return json.encode({
       "line": line,
+      "hlsLine": hlsLine,
       "cdnType": cdnType,
       "flvAntiCode": flvAntiCode,
       "hlsAntiCode": hlsAntiCode,
